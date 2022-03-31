@@ -1,18 +1,186 @@
-﻿@page "/counter"
+﻿<!--@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage -->
+@using Microsoft.Azure.Cosmos;
+@page "/counter"
 
 <PageTitle>Counter</PageTitle>
 
 <h1>Counter</h1>
 
-<p role="status">Current count: @currentCount</p>
+<p role="status">Current session count: @currentCount</p>
+<p role="status">Current total count: @totalCount</p>
+<p role="status">Result from buttonHandler: @buttonHandlerResult</p>
 
 <button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+<input @bind="inputValue" />
+<!--<button class="btn btn-primary" @onclick="setSampleData">Insert name</button>-->
+
+<AuthorizeView>
+    <Authorized>
+        <br />
+        <!--<h1>Hello, @context.User.Identity.Name!</h1>-->
+        <p>You can only see this content if you're authorized.</p>
+        <button class="btn btn-primary" @onclick="LogUsername">@buttonValue</button>
+    </Authorized>
+    <NotAuthorized>
+        <h1>Authentication Failure!</h1>
+        <p>You're not signed in.</p>
+    </NotAuthorized>
+</AuthorizeView>
+<br/>
+<!--<button class="btn btn-primary" @onclick="getSampleData">Load users</button>-->
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var person in persons)
+            {
+                <tr>
+                    <td>@person</td>
+                </tr>
+            }
+        </tbody>
+    </table>
 
 @code {
-    private int currentCount = 0;
+    private string? buttonValue = "Authenticate";
 
-    private void IncrementCount()
+    //[Inject] public ProtectedSessionStorage? ProtectedSessionStorage { get; set; }
+    //[Inject] public ProtectedLocalStorage? ProtectedLocalStorage { get; set; }
+
+    //[CascadingParameter]
+    //private Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    private string _authMessage;
+    private string buttonHandlerResult = "";
+    private string inputValue = "";
+    private int currentCount = 0;
+    private int totalCount = 0;
+    private int browserCount = 0;
+    List<string> persons = new List<string>();
+
+    private CosmosClient? cosmosClient;
+    private Database? database;
+    private Container? container;
+    private static readonly string endpointUri = @"https://smallprojectidle-db.documents.azure.com:443/";
+    private static readonly string primaryKey = @"I1Lpvo3PPqkiliWjx7laJsnoIcVGSaeSxNryi35XJIm38HDs5xCPtQAZcBdiCiIWPoyxaKhEl37IPnRDde2uxQ==";
+    private string databaseId = "SampleDB";
+    private string containerId = "Persons";
+
+    private async Task IncrementCount()
     {
         currentCount++;
+        totalCount++;
+        browserCount++;
+        //await ProtectedSessionStorage.SetAsync("currentCount", currentCount);
+        //await ProtectedLocalStorage.SetAsync("totalCount", totalCount);
     }
+
+    private async Task LogUsername()
+    {
+        //var authState = await authenticationStateTask;
+        //var user = authState.User;
+
+        //if (user.Identity.IsAuthenticated)
+        //{
+        //    _authMessage = $"{user.Identity.Name} is authenticated.";
+        //}
+        //else
+        //{
+        //    _authMessage = "The user is NOT authenticated.";
+        //}
+        //buttonValue = _authMessage;
+        //Console.WriteLine(_authMessage);
+    }
+
+     protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            buttonHandlerResult = await Http.GetFromJsonAsync<ButtonHandler[]>("/api/ButtonHandler") ?? new ButtonHandler[]{};
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.ToString());
+        }
+    }
+
+    //protected override async Task OnInitializedAsync()
+    //{
+    //    try
+    //    {
+    //        var resultTotal = await ProtectedLocalStorage.GetAsync<int>("totalCount");
+    //        totalCount = resultTotal.Success ? resultTotal.Value : 0;
+
+    //        var resultCurrent = await ProtectedSessionStorage.GetAsync<int>("currentCount");
+    //        currentCount = resultCurrent.Success ? resultCurrent.Value : 0;
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Console.WriteLine("InitializeValues failed: " + ex.Message);
+    //    }
+
+    //    try
+    //    {
+    //        this.cosmosClient = new CosmosClient(endpointUri, primaryKey, new CosmosClientOptions()
+    //            {
+    //                ConnectionMode = ConnectionMode.Gateway
+    //            });
+    //        this.database = this.cosmosClient.GetDatabase(databaseId);
+    //        this.container = this.database.GetContainer(containerId);
+    //        await getSampleData();
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Console.WriteLine("Cosmosdb failed: " + ex.Message);
+    //    }
+    //}
+
+    //    async Task setSampleData()
+    //    {
+    //        try
+    //        {
+    //            Person person = new Person(inputValue, 20);
+
+    //            ItemResponse<Person> itemResponse = await this.container.CreateItemAsync(person);
+    //            Console.WriteLine("Data was added succesfully");
+
+    //            await getSampleData();
+    //        }
+    //        catch (Exception ex)
+    //        {
+    //            Console.WriteLine("Data was not added: " + ex.Message);
+    //        }
+    //    }
+
+    //    async Task getSampleData()
+    //    {
+    //        string sqlCommand = "SELECT * FROM c";
+    //        QueryDefinition query = new QueryDefinition(sqlCommand);
+    //        FeedIterator<Person> queryResultIterator = container.GetItemQueryIterator<Person>(query);
+    //        while (queryResultIterator.HasMoreResults)
+    //        {
+    //            try
+    //            {
+    //                persons.Clear();
+    //                FeedResponse<Person> currentResultSet = await queryResultIterator.ReadNextAsync();
+    //                foreach (Person p in currentResultSet)
+    //                {
+    //                    persons.Add(p.firstname);
+    //                }
+    //            }
+    //            catch (Exception ex)
+    //            {
+    //                Console.WriteLine("Could not find result, or time out doing so. Error: " + ex.Message);
+    //            }
+    //        }
+    //        foreach (var p in persons)
+    //        {
+    //            Console.WriteLine(p);
+    //        }
+    //    }
 }
